@@ -13,9 +13,9 @@ pub fn run(packages: Vec<String>, files: Vec<String>) -> Result<(), Box<dyn Erro
     let is = ImportSorter::new(packages);
 
     for f in files {
-        let mut gf = GoFile::read(is.clone(), &im, &f)?;
-        println!("file {} lines count {}", f, gf.lines_count());
+        let mut gf = GoFile::read(is.clone(), &im, f)?;
         gf.sort();
+        gf.write()?;
     }
 
     Ok(())

@@ -1,18 +1,21 @@
 use crate::import_matcher::ImportMatcher;
 use crate::import_ranges::Import;
-use crate::sorter::ImportSorter;
+use crate::sorter::{ImportSorter, ImportType};
+use itertools::Itertools;
 
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 
 pub struct GoFile {
+    path: String,
     lines: Vec<String>,
     is: ImportSorter,
 }
 
 impl GoFile {
-    fn new(is: ImportSorter) -> GoFile {
+    fn new(is: ImportSorter, path: String) -> GoFile {
         GoFile {
+            path,
             lines: Vec::new(),
             is,
         }
@@ -25,14 +28,14 @@ impl GoFile {
     pub fn read(
         is: ImportSorter,
         import_matcher: &ImportMatcher,
-        path: &str,
+        path: String,
     ) -> std::io::Result<GoFile> {
-        let f = File::open(path)?;
+        let f = File::open(&path)?;
         let r = BufReader::new(f);
 
         let mut is_inside_imports_block: bool = false;
 
-        let mut gf = GoFile::new(is);
+        let mut gf = GoFile::new(is, path);
         for l in r.lines() {
             let line = l?;
 
@@ -67,11 +70,65 @@ impl GoFile {
         self.is.sort();
     }
 
-    pub fn lines_count(&self) -> usize {
-        self.lines.len()
-    }
-
     fn add_import(&mut self, i: Import) {
         self.is.insert(i);
     }
+
+    pub fn write(&self) -> std::io::Result<()> {
+        let f = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&self.path)?;
+        let mut lw = BufWriter::new(f);
+        let mut counter: usize = 0;
+        let mut after_import = false;
+
+        for l in &self.lines {
+            counter += 1;
+
+            if counter == 3 {
+                lw.write("import (\n".as_bytes())?;
+
+                for k in self.is.get_buckets().keys().sorted() {
+                    if k != &ImportType::Core {
+                        println!();
+                        lw.write("\n".as_bytes())?;
+                    }
+                    let v = self.is.get_buckets().get(k).unwrap();
+                    write_bucket(&mut lw, v)?;
+                }
+
+                lw.write(")\n\n".as_bytes())?;
+                after_import = true;
+                continue;
+            }
+
+            // this is going to only be triggered after the import
+            // block is filled
+            // only one empty line should appear after the import
+            if after_import {
+                if l.trim().len() == 0 {
+                    continue;
+                } else {
+                    after_import = false;
+                }
+            }
+
+            lw.write(format!("{}\n", l).as_bytes())?;
+        }
+
+        Ok(())
+    }
+}
+
+fn write_bucket(bf: &mut BufWriter<File>, imports: &Vec<Import>) -> std::io::Result<()> {
+    for i in imports {
+        if let Some(n) = &i.name {
+            bf.write(format!("\t{} \"{}\"\n", n, i.url).as_bytes())?;
+        } else {
+            bf.write(format!("\t\"{}\"\n", i.url).as_bytes())?;
+        }
+    }
+
+    Ok(())
 }

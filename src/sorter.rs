@@ -1,7 +1,7 @@
 use super::import_ranges::Import;
 use std::collections::HashMap;
 
-#[derive(Eq, Hash, PartialEq, Clone)]
+#[derive(Eq, Hash, PartialEq, Clone, Debug, PartialOrd, Ord)]
 pub enum ImportType {
     Core,
     ThirdParty,
@@ -51,6 +51,10 @@ impl ImportSorter {
 
         // otherwise, goes into the core import bucket
         self.buckets.get_mut(&ImportType::Core).unwrap().push(i);
+    }
+
+    pub fn get_buckets<'a>(&'a self) -> &'a HashMap<ImportType, Vec<Import>> {
+        &self.buckets
     }
 
     pub fn sort(&mut self) {

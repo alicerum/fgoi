@@ -95,16 +95,22 @@ impl GoFile {
         for l in &self.lines {
             counter += 1;
 
-            if counter == 3 {
+            if self.is.do_imports_exist() && counter == 3 {
                 lw.write("import (\n".as_bytes())?;
+                let mut put_blank = false;
 
                 for k in self.is.get_buckets().keys().sorted() {
-                    if k != &ImportType::Core {
-                        println!();
+                    let v = self.is.get_buckets().get(k).unwrap();
+                    // if we need to put blank and next block is longer than 0
+                    if put_blank && v.len() > 0 {
                         new_size += lw.write("\n".as_bytes())?;
                     }
-                    let v = self.is.get_buckets().get(k).unwrap();
                     new_size += write_bucket(&mut lw, v)?;
+                    if v.len() > 0 {
+                        // if we have written something into imports
+                        // block, then for the next block put line
+                        put_blank = true;
+                    }
                 }
 
                 new_size += lw.write(")\n\n".as_bytes())?;
@@ -122,7 +128,6 @@ impl GoFile {
                     after_import = false;
                 }
             }
-
             new_size += lw.write(format!("{}\n", l).as_bytes())?;
         }
 

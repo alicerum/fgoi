@@ -62,6 +62,15 @@ impl ImportSorter {
             v.sort_by(|i1, i2| i1.url.cmp(&i2.url))
         }
     }
+
+    pub fn do_imports_exist(&self) -> bool {
+        let mut count: usize = 0;
+        for (_, v) in &self.buckets {
+            count += v.len();
+        }
+
+        count > 0
+    }
 }
 
 #[cfg(test)]

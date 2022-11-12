@@ -13,7 +13,13 @@ pub fn run(packages: Vec<String>, files: Vec<String>) -> Result<(), Box<dyn Erro
     let is = ImportSorter::new(packages);
 
     for f in files {
-        let mut gf = GoFile::read(is.clone(), &im, f)?;
+        let mut gf = match GoFile::read(is.clone(), &im, &f) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("could not process file '{}': {}", &f, e);
+                continue;
+            }
+        };
         gf.sort();
         gf.write()?;
     }

@@ -28,14 +28,14 @@ impl GoFile {
     pub fn read(
         is: ImportSorter,
         import_matcher: &ImportMatcher,
-        path: String,
+        path: &str,
     ) -> std::io::Result<GoFile> {
         let f = File::open(&path)?;
         let r = BufReader::new(f);
 
         let mut is_inside_imports_block: bool = false;
 
-        let mut gf = GoFile::new(is, path);
+        let mut gf = GoFile::new(is, path.to_string());
         for l in r.lines() {
             let line = l?;
 
@@ -47,6 +47,14 @@ impl GoFile {
                 if let Some(i) = import_matcher.match_in_block(&line) {
                     gf.add_import(i);
                     continue;
+                } else if line.trim().len() > 0 {
+                    // line is not empty, but also it is not
+                    // an import line. something is clearly wrong
+                    // here, better ignore file
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "File is not correct",
+                    ));
                 }
             }
 

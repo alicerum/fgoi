@@ -63,13 +63,22 @@ impl ImportSorter {
         }
     }
 
-    pub fn do_imports_exist(&self) -> bool {
+    pub fn imports_count(&self) -> usize {
         let mut count: usize = 0;
         for (_, v) in &self.buckets {
             count += v.len();
         }
 
-        count > 0
+        count
+    }
+
+    pub fn get_single_count(&self) -> Option<&Import> {
+        for (_, v) in &self.buckets {
+            if v.len() == 1 {
+                return v.get(0);
+            }
+        }
+        None
     }
 }
 

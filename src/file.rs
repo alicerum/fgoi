@@ -1,6 +1,6 @@
 use crate::import_matcher::ImportMatcher;
 use crate::import_ranges::Import;
-use crate::sorter::{ImportSorter, ImportType};
+use crate::sorter::ImportSorter;
 use itertools::Itertools;
 
 use std::fs::{File, OpenOptions};
@@ -91,11 +91,30 @@ impl GoFile {
         let mut counter: usize = 0;
         let mut after_import = false;
         let mut new_size: usize = 0;
+        let mut import_line: usize = 3;
 
         for l in &self.lines {
             counter += 1;
 
-            if self.is.do_imports_exist() && counter == 3 {
+            if !after_import && l.starts_with("package ") {
+                import_line = counter + 2;
+            }
+
+            // if only one import exists, then get this single import
+            // and print it into the file as is
+            if self.is.imports_count() == 1 && counter == import_line {
+                if let Some(i) = self.is.get_single_count() {
+                    if let Some(n) = &i.name {
+                        new_size +=
+                            lw.write(format!("import {} \"{}\"\n\n", n, i.url).as_bytes())?;
+                    } else {
+                        new_size += lw.write(format!("import \"{}\"\n\n", i.url).as_bytes())?;
+                    }
+                }
+                after_import = true;
+            } else if self.is.imports_count() > 0 && counter == import_line {
+                // else, if multiple imports exist, then we need to be smarter about them
+                // and print them in a very specific way
                 lw.write("import (\n".as_bytes())?;
                 let mut put_blank = false;
 

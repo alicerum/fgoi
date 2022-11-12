@@ -28,14 +28,14 @@ fn process_path(f: &str, im: &ImportMatcher, is: &ImportSorter) -> std::io::Resu
     let m = metadata(f)?;
     if m.is_file() && f.ends_with(".go") {
         return process_file(f, im, is);
-    }
-
-    for path in read_dir(f)? {
-        let path = path?.path();
-        let s = path.to_str();
-        if let Some(s) = s {
-            if let Err(e) = process_path(s, im, is) {
-                eprintln!("could not process file '{}': {}", s, e);
+    } else if m.is_dir() {
+        for path in read_dir(f)? {
+            let path = path?.path();
+            let s = path.to_str();
+            if let Some(s) = s {
+                if let Err(e) = process_path(s, im, is) {
+                    eprintln!("could not process file '{}': {}", s, e);
+                }
             }
         }
     }

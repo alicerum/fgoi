@@ -79,9 +79,10 @@ impl GoFile {
             .write(true)
             .create(true)
             .open(&self.path)?;
-        let mut lw = BufWriter::new(f);
+        let mut lw = BufWriter::new(&f);
         let mut counter: usize = 0;
         let mut after_import = false;
+        let mut new_size: usize = 0;
 
         for l in &self.lines {
             counter += 1;
@@ -92,13 +93,13 @@ impl GoFile {
                 for k in self.is.get_buckets().keys().sorted() {
                     if k != &ImportType::Core {
                         println!();
-                        lw.write("\n".as_bytes())?;
+                        new_size += lw.write("\n".as_bytes())?;
                     }
                     let v = self.is.get_buckets().get(k).unwrap();
-                    write_bucket(&mut lw, v)?;
+                    new_size += write_bucket(&mut lw, v)?;
                 }
 
-                lw.write(")\n\n".as_bytes())?;
+                new_size += lw.write(")\n\n".as_bytes())?;
                 after_import = true;
                 continue;
             }
@@ -114,21 +115,26 @@ impl GoFile {
                 }
             }
 
-            lw.write(format!("{}\n", l).as_bytes())?;
+            new_size += lw.write(format!("{}\n", l).as_bytes())?;
         }
+
+        // set new length to the file (it might be less than it used to
+        // be before the rewriting
+        f.set_len(new_size as u64)?;
 
         Ok(())
     }
 }
 
-fn write_bucket(bf: &mut BufWriter<File>, imports: &Vec<Import>) -> std::io::Result<()> {
+fn write_bucket(bf: &mut BufWriter<&File>, imports: &Vec<Import>) -> std::io::Result<usize> {
+    let mut written: usize = 0;
     for i in imports {
         if let Some(n) = &i.name {
-            bf.write(format!("\t{} \"{}\"\n", n, i.url).as_bytes())?;
+            written += bf.write(format!("\t{} \"{}\"\n", n, i.url).as_bytes())?;
         } else {
-            bf.write(format!("\t\"{}\"\n", i.url).as_bytes())?;
+            written += bf.write(format!("\t\"{}\"\n", i.url).as_bytes())?;
         }
     }
 
-    Ok(())
+    Ok(written)
 }

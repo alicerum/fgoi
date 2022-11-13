@@ -28,16 +28,44 @@ impl ImportSorter {
         is
     }
 
+    /// Since we need to be able to pick up the best suitable
+    /// bucket name for every import, this function is designed
+    /// to do just that. It will pick the bucket name that starts
+    /// with the desired name, but also the longest one of those
+    /// suitable.
+    /// it should have linear complexity, and since we do not expect
+    /// many buckets to exist, should not make things complex at all.
+    fn suitable_custom_bucket_name(&self, name: &str) -> Option<&str> {
+        let mut suitable_names: Vec<&str> = Vec::new();
+        for k in self.buckets.keys() {
+            if let ImportType::Custom(bucket_name) = k {
+                if name.starts_with(bucket_name) {
+                    suitable_names.push(&bucket_name);
+                }
+            }
+        }
+        if suitable_names.len() == 0 {
+            return None;
+        }
+        let mut len = 0;
+        let mut index = 0;
+        for (i, n) in suitable_names.iter().enumerate() {
+            if n.len() > len {
+                len = n.len();
+                index = i;
+            }
+        }
+        Some(suitable_names[index])
+    }
+
     pub fn insert(&mut self, i: Import) {
         let s = &i.url;
         if s.contains(".") && s.contains("/") {
             // try to insert custom import into the custom bucket
-            for (k, v) in &mut self.buckets {
-                if let ImportType::Custom(p) = k {
-                    if s.starts_with(p) {
-                        v.push(i);
-                        return;
-                    }
+            if let Some(bn) = self.suitable_custom_bucket_name(&s) {
+                if let Some(bucket) = self.buckets.get_mut(&ImportType::Custom(bn.to_string())) {
+                    bucket.push(i);
+                    return;
                 }
             }
 

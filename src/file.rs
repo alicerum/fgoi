@@ -104,7 +104,7 @@ impl GoFile {
             // and print it into the file as is
             if self.is.imports_count() == 1 && counter == import_line {
                 if let Some(i) = self.is.get_single_count() {
-                    new_size += lw.write(format!("import {}\n", i.to_string()).as_bytes())?;
+                    new_size += lw.write(format!("import {}\n\n", i.to_string()).as_bytes())?;
                 }
                 after_import = true;
             } else if self.is.imports_count() > 0 && counter == import_line {
@@ -113,6 +113,7 @@ impl GoFile {
                 lw.write("import (\n".as_bytes())?;
                 let mut put_blank = false;
 
+                // writing all buckets here now
                 for k in self.is.get_buckets().keys().sorted() {
                     let v = self.is.get_buckets().get(k).unwrap();
                     // if we need to put blank and next block is longer than 0

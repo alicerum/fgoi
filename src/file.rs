@@ -104,12 +104,7 @@ impl GoFile {
             // and print it into the file as is
             if self.is.imports_count() == 1 && counter == import_line {
                 if let Some(i) = self.is.get_single_count() {
-                    if let Some(n) = &i.name {
-                        new_size +=
-                            lw.write(format!("import {} \"{}\"\n\n", n, i.url).as_bytes())?;
-                    } else {
-                        new_size += lw.write(format!("import \"{}\"\n\n", i.url).as_bytes())?;
-                    }
+                    new_size += lw.write(format!("import {}\n", i.to_string()).as_bytes())?;
                 }
                 after_import = true;
             } else if self.is.imports_count() > 0 && counter == import_line {
@@ -161,11 +156,7 @@ impl GoFile {
 fn write_bucket(bf: &mut BufWriter<&File>, imports: &Vec<Import>) -> std::io::Result<usize> {
     let mut written: usize = 0;
     for i in imports {
-        if let Some(n) = &i.name {
-            written += bf.write(format!("\t{} \"{}\"\n", n, i.url).as_bytes())?;
-        } else {
-            written += bf.write(format!("\t\"{}\"\n", i.url).as_bytes())?;
-        }
+        written += bf.write(format!("\t{}\n", i.to_string()).as_bytes())?;
     }
 
     Ok(written)

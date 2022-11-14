@@ -1,9 +1,11 @@
 use file::GoFile;
 use import_matcher::ImportMatcher;
+use itertools::Itertools;
 use sorter::ImportSorter;
 use std::{
     error::Error,
     fs::{metadata, read_dir},
+    rc::Rc,
 };
 
 mod file;
@@ -13,7 +15,8 @@ mod sorter;
 
 pub fn run(packages: Vec<String>, files: Vec<String>) -> Result<(), Box<dyn Error>> {
     let im = ImportMatcher::new()?;
-    let is = ImportSorter::new(packages);
+    // turn vector of strings into vector of Rc<String> objects
+    let is = ImportSorter::new(packages.into_iter().map(|p| Rc::new(p)).collect_vec());
 
     for f in files {
         if let Err(e) = process_path(&f, &im, &is) {

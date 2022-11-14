@@ -1,7 +1,6 @@
 use crate::import_matcher::ImportMatcher;
 use crate::import_ranges::Import;
 use crate::sorter::ImportSorter;
-use itertools::Itertools;
 
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Write};
@@ -114,8 +113,7 @@ impl GoFile {
                 let mut put_blank = false;
 
                 // writing all buckets here now
-                for k in self.is.get_buckets().keys().sorted() {
-                    let v = self.is.get_buckets().get(k).unwrap();
+                for v in self.is.iter() {
                     // if we need to put blank and next block is longer than 0
                     if put_blank && v.len() > 0 {
                         new_size += lw.write("\n".as_bytes())?;

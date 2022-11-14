@@ -1,28 +1,78 @@
 use super::import_ranges::Import;
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 #[derive(Eq, Hash, PartialEq, Clone, Debug, PartialOrd, Ord)]
 pub enum ImportType {
     Core,
     ThirdParty,
-    Custom(String),
+    Custom(Rc<String>),
 }
 
 #[derive(Clone)]
 pub struct ImportSorter {
+    original: Vec<Rc<String>>,
     buckets: HashMap<ImportType, Vec<Import>>,
 }
 
+enum SorterOrder {
+    Core,
+    ThirdParty,
+    Custom,
+}
+
+/// Iterator object over the import buckets in the sorter.
+/// It releases import buckets one by one in the original order
+/// specified by the user via command line arguments.
+/// First it receives Core, then ThirdParty buckets, and only
+/// then all the custom buckets specified by the user order.
+pub struct ImportSorterIter<'a> {
+    current_key: SorterOrder,
+    current_custom: usize,
+    sorter: &'a ImportSorter,
+}
+
+impl<'a> Iterator for ImportSorterIter<'a> {
+    type Item = &'a Vec<Import>;
+    fn next(&mut self) -> Option<Self::Item> {
+        // Lets go through all the possible bucket types
+        let (new_key, bucket) = match self.current_key {
+            // for core and third party buckets just return those, and only then
+            // deal with the order of the custom ones
+            SorterOrder::Core => (SorterOrder::ThirdParty, Some(ImportType::Core)),
+            SorterOrder::ThirdParty => (SorterOrder::Custom, Some(ImportType::ThirdParty)),
+            SorterOrder::Custom => {
+                // if theres no custom buckets, or if custom bucket is gone through,
+                // then just return nothing.
+                // otherwise, get the correct package name and create bucket key from it
+                if self.current_custom == self.sorter.original.len() {
+                    (SorterOrder::Custom, None)
+                } else {
+                    let package = self.sorter.original[self.current_custom].clone();
+                    self.current_custom += 1;
+                    (SorterOrder::Custom, Some(ImportType::Custom(package)))
+                }
+            }
+        };
+
+        // after correct bucket key has been obtained, return this bucket.
+        // in case no bucket key was found, return nothing. it is efficiently
+        // the end of the iterator
+        self.current_key = new_key;
+        bucket.map(|k| &self.sorter.buckets[&k])
+    }
+}
+
 impl ImportSorter {
-    pub fn new(packages: Vec<String>) -> ImportSorter {
+    pub fn new(packages: Vec<Rc<String>>) -> ImportSorter {
         let mut is = ImportSorter {
+            original: packages,
             buckets: HashMap::new(),
         };
 
         is.buckets.insert(ImportType::Core, Vec::new());
         is.buckets.insert(ImportType::ThirdParty, Vec::new());
-        for p in packages {
-            is.buckets.insert(ImportType::Custom(p), Vec::new());
+        for p in &is.original {
+            is.buckets.insert(ImportType::Custom(p.clone()), Vec::new());
         }
 
         is
@@ -35,12 +85,12 @@ impl ImportSorter {
     /// suitable.
     /// it should have linear complexity, and since we do not expect
     /// many buckets to exist, should not make things complex at all.
-    fn suitable_custom_bucket_name(&self, name: &str) -> Option<&str> {
-        let mut suitable_names: Vec<&str> = Vec::new();
+    fn suitable_custom_bucket_name(&self, name: &str) -> Option<Rc<String>> {
+        let mut suitable_names: Vec<Rc<String>> = Vec::new();
         for k in self.buckets.keys() {
             if let ImportType::Custom(bucket_name) = k {
-                if name.starts_with(bucket_name) {
-                    suitable_names.push(&bucket_name);
+                if name.starts_with(bucket_name.as_ref()) {
+                    suitable_names.push(bucket_name.clone());
                 }
             }
         }
@@ -55,7 +105,15 @@ impl ImportSorter {
                 index = i;
             }
         }
-        Some(suitable_names[index])
+        Some(suitable_names[index].clone())
+    }
+
+    pub fn iter(&self) -> ImportSorterIter {
+        ImportSorterIter {
+            current_key: SorterOrder::Core,
+            current_custom: 0,
+            sorter: self,
+        }
     }
 
     pub fn insert(&mut self, i: Import) {
@@ -63,7 +121,7 @@ impl ImportSorter {
         if s.contains(".") && s.contains("/") {
             // try to insert custom import into the custom bucket
             if let Some(bn) = self.suitable_custom_bucket_name(&s) {
-                if let Some(bucket) = self.buckets.get_mut(&ImportType::Custom(bn.to_string())) {
+                if let Some(bucket) = self.buckets.get_mut(&ImportType::Custom(bn.clone())) {
                     bucket.push(i);
                     return;
                 }
@@ -79,10 +137,6 @@ impl ImportSorter {
 
         // otherwise, goes into the core import bucket
         self.buckets.get_mut(&ImportType::Core).unwrap().push(i);
-    }
-
-    pub fn get_buckets<'a>(&'a self) -> &'a HashMap<ImportType, Vec<Import>> {
-        &self.buckets
     }
 
     pub fn sort(&mut self) {
@@ -116,7 +170,10 @@ mod tests {
 
     #[test]
     fn test_is_custom() {
-        let ps = vec!["github.com/ae".to_string(), "github.com/S1".to_string()];
+        let ps = vec![
+            Rc::new("github.com/ae".to_string()),
+            Rc::new("github.com/S1".to_string()),
+        ];
         let mut is = ImportSorter::new(ps);
 
         is.insert(Import {
@@ -137,7 +194,7 @@ mod tests {
         assert_eq!(
             2,
             is.buckets
-                .get(&ImportType::Custom("github.com/S1".to_string()))
+                .get(&ImportType::Custom(Rc::new("github.com/S1".to_string())))
                 .unwrap()
                 .len()
         );

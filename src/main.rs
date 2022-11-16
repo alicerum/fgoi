@@ -1,5 +1,5 @@
 use clap::Parser;
-use s1_goimports::run;
+use fgoi::run;
 
 /// An S1 go imports sorting solution
 #[derive(Parser, Debug)]

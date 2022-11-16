@@ -1,6 +1,6 @@
 use file::GoFile;
-use import_matcher::ImportMatcher;
 use itertools::Itertools;
+use matcher::ImportMatcher;
 use sorter::ImportSorter;
 use std::{
     error::Error,
@@ -9,8 +9,8 @@ use std::{
 };
 
 mod file;
-mod import_matcher;
-mod import_ranges;
+mod import;
+mod matcher;
 mod sorter;
 
 pub fn run(packages: Vec<String>, files: Vec<String>) -> Result<(), Box<dyn Error>> {

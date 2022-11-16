@@ -1,4 +1,4 @@
-use super::import_ranges::Import;
+use super::import::Import;
 use regex::{Error, Regex};
 
 pub struct ImportMatcher {

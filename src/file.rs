@@ -1,5 +1,5 @@
-use crate::import_matcher::ImportMatcher;
-use crate::import_ranges::Import;
+use crate::import::Import;
+use crate::matcher::ImportMatcher;
 use crate::sorter::ImportSorter;
 
 use std::fs::{File, OpenOptions};

@@ -1,4 +1,4 @@
-use super::import_ranges::Import;
+use super::import::Import;
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Eq, Hash, PartialEq, Clone, Debug, PartialOrd, Ord)]

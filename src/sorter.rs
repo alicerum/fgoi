@@ -1,17 +1,17 @@
 use super::import::Import;
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 #[derive(Eq, Hash, PartialEq, Clone, Debug, PartialOrd, Ord)]
-pub enum ImportType {
+pub enum ImportType<'a> {
     Core,
     ThirdParty,
-    Custom(Rc<String>),
+    Custom(&'a str),
 }
 
 #[derive(Clone)]
-pub struct ImportSorter {
-    original: Vec<Rc<String>>,
-    buckets: HashMap<ImportType, Vec<Import>>,
+pub struct ImportSorter<'a> {
+    original: Vec<&'a str>,
+    buckets: HashMap<ImportType<'a>, Vec<Import>>,
 }
 
 enum SorterOrder {
@@ -28,7 +28,7 @@ enum SorterOrder {
 pub struct ImportSorterIter<'a> {
     current_key: SorterOrder,
     current_custom: usize,
-    sorter: &'a ImportSorter,
+    sorter: &'a ImportSorter<'a>,
 }
 
 impl<'a> Iterator for ImportSorterIter<'a> {
@@ -47,7 +47,7 @@ impl<'a> Iterator for ImportSorterIter<'a> {
                 if self.current_custom == self.sorter.original.len() {
                     (SorterOrder::Custom, None)
                 } else {
-                    let package = self.sorter.original[self.current_custom].clone();
+                    let package = self.sorter.original[self.current_custom];
                     self.current_custom += 1;
                     (SorterOrder::Custom, Some(ImportType::Custom(package)))
                 }
@@ -62,8 +62,8 @@ impl<'a> Iterator for ImportSorterIter<'a> {
     }
 }
 
-impl ImportSorter {
-    pub fn new(packages: Vec<Rc<String>>) -> ImportSorter {
+impl<'a> ImportSorter<'a> {
+    pub fn new(packages: Vec<&'a str>) -> ImportSorter<'a> {
         let mut is = ImportSorter {
             original: packages,
             buckets: HashMap::new(),
@@ -72,7 +72,7 @@ impl ImportSorter {
         is.buckets.insert(ImportType::Core, Vec::new());
         is.buckets.insert(ImportType::ThirdParty, Vec::new());
         for p in &is.original {
-            is.buckets.insert(ImportType::Custom(p.clone()), Vec::new());
+            is.buckets.insert(ImportType::Custom(p), Vec::new());
         }
 
         is
@@ -85,12 +85,12 @@ impl ImportSorter {
     /// suitable.
     /// it should have linear complexity, and since we do not expect
     /// many buckets to exist, should not make things complex at all.
-    fn suitable_custom_bucket_name(&self, name: &str) -> Option<Rc<String>> {
-        let mut suitable_names: Vec<Rc<String>> = Vec::new();
+    fn suitable_custom_bucket_name(&self, name: &str) -> Option<&'a str> {
+        let mut suitable_names = Vec::new();
         for k in self.buckets.keys() {
             if let ImportType::Custom(bucket_name) = k {
-                if name.starts_with(bucket_name.as_ref()) {
-                    suitable_names.push(bucket_name.clone());
+                if name.starts_with(bucket_name) {
+                    suitable_names.push(*bucket_name);
                 }
             }
         }
@@ -105,10 +105,10 @@ impl ImportSorter {
                 index = i;
             }
         }
-        Some(suitable_names[index].clone())
+        Some(suitable_names[index])
     }
 
-    pub fn iter(&self) -> ImportSorterIter<'_> {
+    pub fn iter(&self) -> ImportSorterIter {
         ImportSorterIter {
             current_key: SorterOrder::Core,
             current_custom: 0,
@@ -165,10 +165,7 @@ mod tests {
 
     #[test]
     fn test_is_custom() {
-        let ps = vec![
-            Rc::new("github.com/ae".to_string()),
-            Rc::new("github.com/S1".to_string()),
-        ];
+        let ps = vec!["github.com/ae", "github.com/S1"];
         let mut is = ImportSorter::new(ps);
 
         is.insert(Import {
@@ -189,7 +186,7 @@ mod tests {
         assert_eq!(
             2,
             is.buckets
-                .get(&ImportType::Custom(Rc::new("github.com/S1".to_string())))
+                .get(&ImportType::Custom("github.com/S1"))
                 .unwrap()
                 .len()
         );

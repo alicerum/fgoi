@@ -18,7 +18,7 @@ fn main() {
     let o = Options::parse();
 
     if let Err(e) = run(o.package, o.files) {
-        eprintln!("erorr: {}", e);
+        eprintln!("error: {}", e);
         std::process::exit(1);
     }
 }

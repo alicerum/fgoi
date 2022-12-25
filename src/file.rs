@@ -29,7 +29,7 @@ impl GoFile {
         import_matcher: &ImportMatcher,
         path: &str,
     ) -> std::io::Result<GoFile> {
-        let f = File::open(&path)?;
+        let f = File::open(path)?;
         let r = BufReader::new(f);
 
         let mut is_inside_imports_block: bool = false;
@@ -46,7 +46,7 @@ impl GoFile {
                 if let Some(i) = import_matcher.match_in_block(&line) {
                     gf.add_import(i);
                     continue;
-                } else if line.trim().len() > 0 {
+                } else if !line.trim().is_empty() {
                     // line is not empty, but also it is not
                     // an import line. something is clearly wrong
                     // here, better ignore file
@@ -103,23 +103,23 @@ impl GoFile {
             // and print it into the file as is
             if self.is.imports_count() == 1 && counter == import_line {
                 if let Some(i) = self.is.get_single_count() {
-                    new_size += lw.write(format!("import {}\n\n", i.to_string()).as_bytes())?;
+                    new_size += lw.write(format!("import {}\n\n", i).as_bytes())?;
                 }
                 after_import = true;
             } else if self.is.imports_count() > 0 && counter == import_line {
                 // else, if multiple imports exist, then we need to be smarter about them
                 // and print them in a very specific way
-                lw.write("import (\n".as_bytes())?;
+                lw.write_all("import (\n".as_bytes())?;
                 let mut put_blank = false;
 
                 // writing all buckets here now
                 for v in self.is.iter() {
                     // if we need to put blank and next block is longer than 0
-                    if put_blank && v.len() > 0 {
-                        new_size += lw.write("\n".as_bytes())?;
+                    if put_blank && !v.is_empty() {
+                        new_size += lw.write(b"\n")?;
                     }
                     new_size += write_bucket(&mut lw, v)?;
-                    if v.len() > 0 {
+                    if !v.is_empty() {
                         // if we have written something into imports
                         // block, then for the next block put line
                         put_blank = true;
@@ -135,11 +135,10 @@ impl GoFile {
             // block is filled
             // only one empty line should appear after the import
             if after_import {
-                if l.trim().len() == 0 {
+                if l.trim().is_empty() {
                     continue;
-                } else {
-                    after_import = false;
                 }
+                after_import = false;
             }
             new_size += lw.write(format!("{}\n", l).as_bytes())?;
         }
@@ -155,7 +154,7 @@ impl GoFile {
 fn write_bucket(bf: &mut BufWriter<&File>, imports: &Vec<Import>) -> std::io::Result<usize> {
     let mut written: usize = 0;
     for i in imports {
-        written += bf.write(format!("\t{}\n", i.to_string()).as_bytes())?;
+        written += bf.write(format!("\t{}\n", i).as_bytes())?;
     }
 
     Ok(written)

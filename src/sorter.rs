@@ -23,7 +23,7 @@ enum SorterOrder {
 /// Iterator object over the import buckets in the sorter.
 /// It releases import buckets one by one in the original order
 /// specified by the user via command line arguments.
-/// First it receives Core, then ThirdParty buckets, and only
+/// First it receives `Core`, then `ThirdParty` buckets, and only
 /// then all the custom buckets specified by the user order.
 pub struct ImportSorterIter<'a> {
     current_key: SorterOrder,
@@ -94,7 +94,7 @@ impl ImportSorter {
                 }
             }
         }
-        if suitable_names.len() == 0 {
+        if suitable_names.is_empty() {
             return None;
         }
         let mut len = 0;
@@ -108,7 +108,7 @@ impl ImportSorter {
         Some(suitable_names[index].clone())
     }
 
-    pub fn iter(&self) -> ImportSorterIter {
+    pub fn iter(&self) -> ImportSorterIter<'_> {
         ImportSorterIter {
             current_key: SorterOrder::Core,
             current_custom: 0,
@@ -118,10 +118,10 @@ impl ImportSorter {
 
     pub fn insert(&mut self, i: Import) {
         let s = &i.url;
-        if s.contains(".") && s.contains("/") {
+        if s.contains('.') && s.contains('/') {
             // try to insert custom import into the custom bucket
-            if let Some(bn) = self.suitable_custom_bucket_name(&s) {
-                if let Some(bucket) = self.buckets.get_mut(&ImportType::Custom(bn.clone())) {
+            if let Some(bn) = self.suitable_custom_bucket_name(s) {
+                if let Some(bucket) = self.buckets.get_mut(&ImportType::Custom(bn)) {
                     bucket.push(i);
                     return;
                 }
@@ -140,22 +140,17 @@ impl ImportSorter {
     }
 
     pub fn sort(&mut self) {
-        for (_, v) in &mut self.buckets {
-            v.sort_by(|i1, i2| i1.url.cmp(&i2.url))
+        for v in &mut self.buckets.values_mut() {
+            v.sort_by(|i1, i2| i1.url.cmp(&i2.url));
         }
     }
 
     pub fn imports_count(&self) -> usize {
-        let mut count: usize = 0;
-        for (_, v) in &self.buckets {
-            count += v.len();
-        }
-
-        count
+        self.buckets.values().map(Vec::len).sum()
     }
 
     pub fn get_single_count(&self) -> Option<&Import> {
-        for (_, v) in &self.buckets {
+        for v in self.buckets.values() {
             if v.len() == 1 {
                 return v.get(0);
             }

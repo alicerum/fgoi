@@ -5,14 +5,14 @@ use crate::sorter::ImportSorter;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
-pub struct GoFile {
+pub struct GoFile<'a> {
     path: String,
     lines: Vec<String>,
-    is: ImportSorter,
+    is: ImportSorter<'a>,
 }
 
-impl GoFile {
-    fn new(is: ImportSorter, path: String) -> GoFile {
+impl<'a> GoFile<'a> {
+    fn new(is: ImportSorter<'a>, path: String) -> GoFile<'a> {
         GoFile {
             path,
             lines: Vec::new(),
@@ -25,10 +25,10 @@ impl GoFile {
     }
 
     pub fn read(
-        is: ImportSorter,
+        is: ImportSorter<'a>,
         import_matcher: &ImportMatcher,
         path: &str,
-    ) -> std::io::Result<GoFile> {
+    ) -> std::io::Result<GoFile<'a>> {
         let f = File::open(path)?;
         let r = BufReader::new(f);
 

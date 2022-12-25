@@ -27,9 +27,15 @@ pub fn run(packages: Vec<String>, files: Vec<String>) -> Result<(), Box<dyn Erro
     Ok(())
 }
 
+fn is_go_file(filename: &str) -> bool {
+    let filename = std::path::Path::new(filename);
+    filename.extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("go"))
+}
+
 fn process_path(f: &str, im: &ImportMatcher, is: &ImportSorter) -> std::io::Result<()> {
     let m = metadata(f)?;
-    if m.is_file() && f.eq_ignore_ascii_case(".go") {
+    if m.is_file() && is_go_file(f) {
         return process_file(f, im, is);
     } else if m.is_dir() {
         for path in read_dir(f)? {

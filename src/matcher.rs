@@ -19,25 +19,20 @@ impl ImportMatcher {
     }
 
     pub fn match_single(&self, s: &str) -> Option<Import> {
-        for cap in self.single_import.captures_iter(s) {
-            let import = Import {
+        self.single_import
+            .captures_iter(s)
+            .next()
+            .map(|cap| Import {
                 name: string_from_match(&cap[1]),
                 url: String::from(&cap[2]),
-            };
-            return Option::Some(import);
-        }
-        Option::None
+            })
     }
 
     pub fn match_in_block(&self, s: &str) -> Option<Import> {
-        for cap in self.block_import.captures_iter(s) {
-            let import = Import {
-                name: string_from_match(&cap[1]),
-                url: String::from(&cap[2]),
-            };
-            return Option::Some(import);
-        }
-        Option::None
+        self.block_import.captures_iter(s).next().map(|cap| Import {
+            name: string_from_match(&cap[1]),
+            url: String::from(&cap[2]),
+        })
     }
 
     pub fn match_import_begin(&self, s: &str) -> bool {
@@ -50,8 +45,8 @@ impl ImportMatcher {
 }
 
 fn string_from_match(s: &str) -> Option<String> {
-    if s.len() == 0 {
-        return Option::None;
+    if s.is_empty() {
+        return None;
     }
-    Option::Some(String::from(s))
+    Some(String::from(s))
 }

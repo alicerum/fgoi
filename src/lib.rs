@@ -16,7 +16,7 @@ mod sorter;
 pub fn run(packages: Vec<String>, files: Vec<String>) -> Result<(), Box<dyn Error>> {
     let im = ImportMatcher::new()?;
     // turn vector of strings into vector of Rc<String> objects
-    let is = ImportSorter::new(packages.into_iter().map(|p| Rc::new(p)).collect_vec());
+    let is = ImportSorter::new(packages.into_iter().map(Rc::new).collect_vec());
 
     for f in files {
         if let Err(e) = process_path(&f, &im, &is) {
@@ -29,7 +29,7 @@ pub fn run(packages: Vec<String>, files: Vec<String>) -> Result<(), Box<dyn Erro
 
 fn process_path(f: &str, im: &ImportMatcher, is: &ImportSorter) -> std::io::Result<()> {
     let m = metadata(f)?;
-    if m.is_file() && f.ends_with(".go") {
+    if m.is_file() && f.eq_ignore_ascii_case(".go") {
         return process_file(f, im, is);
     } else if m.is_dir() {
         for path in read_dir(f)? {

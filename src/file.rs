@@ -31,11 +31,18 @@ impl<'a> GoFile<'a> {
     ) -> std::io::Result<GoFile<'a>> {
         let f = File::open(path)?;
         let r = BufReader::new(f);
+        GoFile::read_from(is, import_matcher, path.to_string(), r)
+    }
 
-        let mut is_inside_imports_block: bool = false;
-
-        let mut gf = GoFile::new(is, path.to_string());
-        for l in r.lines() {
+    pub fn read_from<R: BufRead>(
+        is: ImportSorter<'a>,
+        import_matcher: &ImportMatcher,
+        path: String,
+        reader: R,
+    ) -> std::io::Result<GoFile<'a>> {
+        let mut is_inside_imports_block = false;
+        let mut gf = GoFile::new(is, path);
+        for l in reader.lines() {
             let line = l?;
 
             if is_inside_imports_block {

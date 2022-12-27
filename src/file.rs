@@ -87,6 +87,14 @@ impl<'a> GoFile<'a> {
             .create(true)
             .open(&self.path)?;
         let mut lw = BufWriter::new(&f);
+        let new_size = self.write_to(&mut lw)?;
+        // set new length to the file (it might be less than it used to
+        // be before the rewriting
+        f.set_len(new_size as u64)?;
+        Ok(())
+    }
+
+    pub fn write_to<W: Write>(&self, mut writer: W) -> std::io::Result<usize> {
         let mut counter: usize = 0;
         let mut after_import = false;
         let mut new_size: usize = 0;
@@ -103,22 +111,22 @@ impl<'a> GoFile<'a> {
             // and print it into the file as is
             if self.is.imports_count() == 1 && counter == import_line {
                 if let Some(i) = self.is.get_single_count() {
-                    new_size += lw.write(format!("import {}\n\n", i).as_bytes())?;
+                    new_size += writer.write(format!("import {}\n\n", i).as_bytes())?;
                 }
                 after_import = true;
             } else if self.is.imports_count() > 0 && counter == import_line {
                 // else, if multiple imports exist, then we need to be smarter about them
                 // and print them in a very specific way
-                lw.write_all("import (\n".as_bytes())?;
+                writer.write_all("import (\n".as_bytes())?;
                 let mut put_blank = false;
 
                 // writing all buckets here now
                 for v in self.is.iter() {
                     // if we need to put blank and next block is longer than 0
                     if put_blank && !v.is_empty() {
-                        new_size += lw.write(b"\n")?;
+                        new_size += writer.write(b"\n")?;
                     }
-                    new_size += write_bucket(&mut lw, v)?;
+                    new_size += write_bucket(&mut writer, v)?;
                     if !v.is_empty() {
                         // if we have written something into imports
                         // block, then for the next block put line
@@ -126,7 +134,7 @@ impl<'a> GoFile<'a> {
                     }
                 }
 
-                new_size += lw.write(")\n\n".as_bytes())?;
+                new_size += writer.write(")\n\n".as_bytes())?;
                 after_import = true;
                 continue;
             }
@@ -140,21 +148,16 @@ impl<'a> GoFile<'a> {
                 }
                 after_import = false;
             }
-            new_size += lw.write(format!("{}\n", l).as_bytes())?;
+            new_size += writer.write(format!("{}\n", l).as_bytes())?;
         }
-
-        // set new length to the file (it might be less than it used to
-        // be before the rewriting
-        f.set_len(new_size as u64)?;
-
-        Ok(())
+        Ok(new_size)
     }
 }
 
-fn write_bucket(bf: &mut BufWriter<&File>, imports: &Vec<Import>) -> std::io::Result<usize> {
+fn write_bucket<W: Write>(mut writer: W, imports: &[Import]) -> std::io::Result<usize> {
     let mut written: usize = 0;
     for i in imports {
-        written += bf.write(format!("\t{}\n", i).as_bytes())?;
+        written += writer.write(format!("\t{}\n", i).as_bytes())?;
     }
 
     Ok(written)

@@ -1,6 +1,7 @@
-use file::GoFile;
-use matcher::ImportMatcher;
-use sorter::ImportSorter;
+pub use file::GoFile;
+pub use import::Import;
+pub use matcher::ImportMatcher;
+pub use sorter::ImportSorter;
 use std::{
     error::Error,
     fs::{metadata, read_dir},

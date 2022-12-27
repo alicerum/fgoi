@@ -14,3 +14,21 @@ impl fmt::Display for Import {
         write!(f, "\"{}\"", self.url)
     }
 }
+
+impl From<(&str, &str)> for Import {
+    fn from((name, url): (&str, &str)) -> Self {
+        Self {
+            name: Some(name.to_string()),
+            url: url.to_string(),
+        }
+    }
+}
+
+impl From<(Option<&str>, &str)> for Import {
+    fn from((name, url): (Option<&str>, &str)) -> Self {
+        Self {
+            name: name.map(str::to_string),
+            url: url.to_string(),
+        }
+    }
+}

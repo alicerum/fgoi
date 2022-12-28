@@ -41,7 +41,8 @@ impl<'a> ImportSorter<'a> {
             .chain(self.custom_buckets_iter())
     }
 
-    pub fn insert(&mut self, i: Import) {
+    pub fn insert(&mut self, i: impl Into<Import>) {
+        let i = i.into();
         let s = &i.url;
         let bucket = if s.contains('.') && s.contains('/') {
             // try to insert custom import into the custom bucket
@@ -87,18 +88,9 @@ mod tests {
         let ps = vec!["github.com/ae", "github.com/S1"];
         let mut is = ImportSorter::new(ps);
 
-        is.insert(Import {
-            name: Some("hurpcoerc".to_string()),
-            url: "github.com/S1/prchu".to_string(),
-        });
-        is.insert(Import {
-            name: None,
-            url: "github.com/S1/hrechu".to_string(),
-        });
-        is.insert(Import {
-            name: Some("alices".to_string()),
-            url: "github.com/alice/very_project".to_string(),
-        });
+        is.insert(("hurpcoerc", "github.com/S1/prchu"));
+        is.insert((None, "github.com/S1/hrechu"));
+        is.insert(("alices", "github.com/alice/very_project"));
 
         is.sort();
 
